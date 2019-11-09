@@ -52,7 +52,9 @@ const double kdX=25.0, kdY=25.0, kdZ=25.0; // mm
 const double kX1=kX0+(knX-1)*kdX, kY1=kY0+(knY-1)*kdY, kZ1=kZ0+(knZ-1)*kdZ;
 TVector3 kCenter(3909.0, 0.0, -6164.5); // mm
 
+TEveTrackList *g_list = 0;
 TEveTrackPropagator* g_prop = 0;
+Bool_t isRungeKutta = kTRUE;
 
 class GappedField : public TEveMagField
 {
@@ -333,8 +335,9 @@ TEveTrack* make_track(TEveTrackPropagator* prop, Int_t sign)
   return track;
 }
 
+void newTrack(double px, double py, double pz, int charge);
 
-void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
+void track(Int_t mode = 4)
 {
    //readMap();
    //TVector3 pos(2804, -1200, -9891.5);
@@ -394,7 +397,7 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
     gEve->AddGlobalElement(eveTopNode);
   }
 
-   TEveTrackList *list = new TEveTrackList();
+   TEveTrackList *list = g_list = new TEveTrackList();
    TEveTrackPropagator* prop = g_prop = list->GetPropagator();
    prop->SetFitDaughters(kFALSE);
    prop->SetMaxR(10000);
@@ -484,108 +487,33 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
          prop->RefPMAtt().SetMarkerStyle(4);
          list->SetElementName(Form("%s, Mu2e field", list->GetElementName()));
 
-
-         TEveRecTrackD *rc = new TEveRecTrackD();
-         //rc->fV.Set(390.4, 0.0, -616.45);
-         rc->fV.Set(0, 0, 30);
-         rc->fP.Set(-0.17, 0.0, -0.05);
-         rc->fSign = -1;
-         track = new TEveTrack(rc, prop);
-
-         track->SetRnrPoints(kTRUE);
-         track->SetMarkerStyle(4);
-
-         break;
-      }
-
-      case 5:
-      {
-         // Magnetic field of CMS I.
-         CmsMagField* mf = new CmsMagField;
-         mf->setReverseState(true);
-         mf->setSimpleModel(false);
-
-         prop->SetMagFieldObj(mf);
-         prop->SetMaxR(1000);
-         prop->SetMaxZ(1000);
-         prop->SetRnrReferences(kTRUE);
-         prop->SetRnrDaughters(kTRUE);
-         prop->SetRnrDecay(kTRUE);
-         prop->RefPMAtt().SetMarkerStyle(4);
-         list->SetElementName(Form("%s, CMS field", list->GetElementName()));
-
-         TEveRecTrackD *rc = new TEveRecTrackD();
-         rc->fV.Set(-16.426592, 16.403185, -19.782692);
-         rc->fP.Set(3.631100, 3.643450, 0.682254);
-         rc->fSign = -1;
-         track = new TEveTrack(rc, prop);
-
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kReference,
-                  TEveVectorD(-1.642659e+01, 1.640318e+01, -1.978269e+01),
-                  TEveVectorD(3.631100, 3.643450, 0.682254)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kReference,
-                  TEveVectorD(-1.859987e+00, 3.172243e+01, -1.697866e+01),
-                  TEveVectorD(3.456056, 3.809894, 0.682254)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kReference,
-                  TEveVectorD(4.847579e+01, 9.871711e+01, -5.835719e+00),
-                  TEveVectorD(2.711614, 4.409945, 0.687656)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDaughter,
-                  TEveVectorD(1.342045e+02, 4.203950e+02, 3.846268e+01)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDaughter,
-                  TEveVectorD(1.483827e+02, 5.124750e+02, 5.064311e+01)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDaughter,
-                  TEveVectorD(1.674676e+02, 6.167731e+02, 6.517403e+01)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDecay,
-                  TEveVectorD(1.884976e+02, 7.202000e+02, 7.919290e+01)));
-
-         track->SetRnrPoints(kTRUE);
-         track->SetMarkerStyle(4);
-
-         break;
-      }
-
-      case 6:
-      {
-         // Problematic track from Druid
-         prop->SetMagFieldObj(new TEveMagFieldDuo(350, -3.5, 2.0));
-         prop->SetMaxR(1000);
-         prop->SetMaxZ(1000);
-         prop->SetRnrReferences(kTRUE);
-         prop->SetRnrDaughters(kTRUE);
-         prop->SetRnrDecay(kTRUE);
-         prop->RefPMAtt().SetMarkerStyle(4);
-         list->SetElementName(Form("%s, Some ILC Detector field",
-                                   list->GetElementName()));
-
-         TEveRecTrackD *rc = new TEveRecTrackD();
-         rc->fV.Set(57.1068, 31.2401, -7.07629);
-         rc->fP.Set(4.82895, 2.35083, -0.611757);
-         rc->fSign = 1;
-         track = new TEveTrack(rc, prop);
-
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDaughter,
-                  TEveVectorD(1.692235e+02, 7.047929e+01, -2.064785e+01)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDaughter,
-                  TEveVectorD(5.806180e+02, 6.990633e+01, -6.450000e+01)));
-         track->AddPathMark(TEvePathMarkD(TEvePathMarkD::kDecay,
-                  TEveVectorD(6.527213e+02, 1.473249e+02, -8.348498e+01)));
-
-         track->SetRnrPoints(kTRUE);
-         track->SetMarkerStyle(4);
-
          break;
       }
    };
 
+   newTrack();
+}
+
+void newTrack(double px=-0.17, double py=0.0, double pz=-0.05, int charge=1)
+{
+   TEveRecTrackD *rc = new TEveRecTrackD();
+   rc->fV.Set(0, 0, 30);
+   rc->fP.Set(px, py, pz);
+   rc->fSign = -1*charge;
+   TEveTrack *track = new TEveTrack(rc, g_prop);
+
+   track->SetRnrPoints(kTRUE);
+   track->SetMarkerStyle(4);
+
    if (isRungeKutta)
-      list->SetLineColor(kMagenta);
+      g_list->SetLineColor(kMagenta);
    else
-      list->SetLineColor(kCyan);
+      g_list->SetLineColor(kCyan);
 
-   track->SetLineColor(list->GetLineColor());
+   track->SetLineColor(g_list->GetLineColor());
 
-   gEve->AddElement(list);
-   list->AddElement(track);
+   gEve->AddElement(g_list);
+   g_list->AddElement(track);
 
    //prop->PrintMagField(1,1,1);
    track->MakeTrack();
