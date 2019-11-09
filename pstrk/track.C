@@ -200,7 +200,7 @@ public:
 
 void Mu2eMagField::readMap()
 {
-    ifstream f("BFieldMaps/Mau13/PSMap.txt");
+    ifstream f("../BFieldMaps/Mau13/PSMap.txt");
     string line;
     int nLine = 0;
     double x, y, z;
@@ -286,7 +286,7 @@ TVector3 Mu2eMagField::getBField(TVector3 pos) const
         b += bWeight;
     }  
     //b.Print();
-    cout << "pos(" << pos.x() << ", " << pos.y() << ", " << pos.z() << ") B(" << b.x() << ", " << b.y() << ", " << b.z() << ")" << endl;
+    //cout << "pos(" << pos.x() << ", " << pos.y() << ", " << pos.z() << ") B(" << b.x() << ", " << b.y() << ", " << b.z() << ")" << endl;
 
     return b;
 }
@@ -343,11 +343,12 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
    gSystem->IgnoreSignal(kSigSegmentationViolation, true);
    TEveManager::Create();
 
-  TGeoManager::Import("mu2e_gdml.root");
+  TGeoManager::Import("mu2e_gdml_root5.root");
   TGeoVolume* volHallAir  = gGeoManager->GetVolume("HallAir");
   cout << volHallAir->GetName() << endl;
   TGeoVolume* volPSVacuum = gGeoManager->GetVolume("PSVacuum");
   cout << volPSVacuum->GetName() << endl;
+  //volPSVacuum->GetShape()->Inspect();  // Tube:R=75.375,dZ=249.648
 
   bool kDrawDet = 1;
   TVector3 posTarget(0,0,0);
@@ -358,6 +359,8 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
     TGeoNode* node0 = vecNodePSVacuum[0];
     if (!node0) cout << "node0 not found" << endl;
     cout << "node0 " << node0->GetName() << endl;
+    cout << "Translation in its mother:" << endl;
+    node0->GetMatrix()->Print();
 
     // Find the PSShield and set it invisible or transparent to see inside
     TGeoVolume* volPSVacuum = node0->GetVolume();
@@ -375,11 +378,20 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
     TGeoMatrix* matrixTarget = nodeTarget->GetMatrix();
     matrixTarget->Print();
     const double *trans = matrixTarget->GetTranslation();
-    //cout << "Translation: (" << trans[0] << ", " << trans[1] << ", " << trans[2] << ")" << endl;
+    cout << "PSTarget in PSVacuum Translation: (" << trans[0] << ", " << trans[1] << ", " << trans[2] << ")" << endl; // (0, 0, 33.5975) 
     posTarget = TVector3(trans[0], trans[1], trans[2]);
 
-    TEveGeoTopNode* eveNode0 = new TEveGeoTopNode(gGeoManager, node0);
-    gEve->AddGlobalElement(eveNode0);
+    // The center of node PSVacuum is not PSTarget center, add a TOP as mother to shift world coordinate center to PSTarget center
+    TGeoMaterial *matVacuum = new TGeoMaterial("Vacuum", 0,0,0);
+    TGeoMedium *Vacuum = new TGeoMedium("Vacuum",1, matVacuum);
+    TGeoVolume *top = gGeoManager->MakeBox("TOP", Vacuum, 80.0, 80.0, 300.0);
+    TGeoTranslation *trPSVacuumInMother = new TGeoTranslation(-1.0*trans[0], -1.0*trans[1], -1.0*trans[2]);
+    top->AddNode(volPSVacuum, 1, trPSVacuumInMother);
+    TGeoNodeOffset *topNode = new TGeoNodeOffset(top, 1, 0.0);
+
+    // Add the top node to eve
+    TEveGeoTopNode* eveTopNode = new TEveGeoTopNode(gGeoManager, topNode); // node0
+    gEve->AddGlobalElement(eveTopNode);
   }
 
    TEveTrackList *list = new TEveTrackList();
@@ -575,9 +587,7 @@ void track(Int_t mode = 4, Bool_t isRungeKutta = kTRUE)
    gEve->AddElement(list);
    list->AddElement(track);
 
-   prop->PrintMagField(1,1,1);
-   cout << "nPoints " << prop->GetCurrentPoint() << endl;
-
+   //prop->PrintMagField(1,1,1);
    track->MakeTrack();
 
    TEveViewer *ev = gEve->GetDefaultViewer();
