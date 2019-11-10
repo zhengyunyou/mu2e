@@ -1,28 +1,12 @@
-/// \file
-/// \ingroup tutorial_eve
-/// Demonstrates usage of TEveTrackPRopagator with different magnetic
-/// field configurations.
+/// Toy macro to simulate and display particles flying in Mu2e PS
+/// Modified from tutorials/eve/track.C
 /// Needs to be run in compiled mode.
 /// root
-/// ~~~{.cpp}
 ///   .L track.C+
-///   track(3, kTRUE)
-/// ~~~
-/// void track(Int_t mode = 5, Bool_t isRungeKutta = kTRUE)
-/// Modes are
-///  0. B = 0, no difference btween signed and charge particles;
-///  1. constant B field (along z, but could have arbitrary direction);
-///  2. variable B field, sign change at  R = 200 cm;
-///  3. magnetic field with a zero-field region;
-///  4. CMS magnetic field - simple track;
-///  5. CMS magnetic field - track with different path-marks.
-///  6. Concpetual ILC detector, problematic track
+///   track();
+///   newTrack(px, py, pz, charge, refresh);  // newTrack(0.0, 0.18, -0.025, 1, 1)
 ///
-/// \image html eve_track.png
-/// \macro_code
-///
-/// \author Alja Mrak-Tadel
-
+/// \author Zhengyun You
 
 #include "TEveTrackPropagator.h"
 #include "TEveTrack.h"
@@ -202,6 +186,7 @@ public:
 
 void Mu2eMagField::readMap()
 {
+    cout << "Initialize PS BFieldMap..." << endl;
     ifstream f("../BFieldMaps/Mau13/PSMap.txt");
     string line;
     int nLine = 0;
@@ -221,7 +206,7 @@ void Mu2eMagField::readMap()
             gbField.push_back(b);
         }
         nLine++;
-        if (nLine%100000 == 0) cout << "line " << nLine << endl;
+        if (nLine%100000 == 0) cout << "Read line " << nLine << "..." << endl;
     }
 }
 
@@ -306,46 +291,8 @@ vector<TGeoNode*> findNode(TGeoVolume* vol, TString name)
   return vec;
 }
 
-//==============================================================================
-
-//______________________________________________________________________________
-TEveTrack* make_track(TEveTrackPropagator* prop, Int_t sign)
+void initDet()
 {
-  // Make track with given propagator.
-  // Add to math-marks to test fit.
-
-  TEveRecTrackD *rc = new TEveRecTrackD();
-  //rc->fV.Set(0.028558, -0.000918, 3.691919);
-  //rc->fP.Set(0.767095, -2.400006, -0.313103);
-  rc->fV.Set(0.0, 0.0, 0.0);
-  rc->fP.Set(1, 0, 0.1);
-  rc->fSign = sign;
-
-  TEveTrack* track = new TEveTrack(rc, prop);
-  track->SetName(Form("Charge %d", sign));
-/*  // daughter 0
-  TEvePathMarkD* pm1 = new TEvePathMarkD(TEvePathMarkD::kDaughter);
-  pm1->fV.Set(1.479084, -4.370661, 3.119761);
-  track->AddPathMark(*pm1);
-  // daughter 1
-  TEvePathMarkD* pm2 = new TEvePathMarkD(TEvePathMarkD::kDaughter);
-  pm2->fV.Set(57.72345, -89.77011, -9.783746);
-  track->AddPathMark(*pm2);
-*/
-  return track;
-}
-
-void newTrack(double px, double py, double pz, int charge);
-
-void track(Int_t mode = 4)
-{
-   //readMap();
-   //TVector3 pos(2804, -1200, -9891.5);
-   //TVector3 b = getBField( pos );
-
-   gSystem->IgnoreSignal(kSigSegmentationViolation, true);
-   TEveManager::Create();
-
   TGeoManager::Import("mu2e_gdml_root5.root");
   TGeoVolume* volHallAir  = gGeoManager->GetVolume("HallAir");
   cout << volHallAir->GetName() << endl;
@@ -362,8 +309,8 @@ void track(Int_t mode = 4)
     TGeoNode* node0 = vecNodePSVacuum[0];
     if (!node0) cout << "node0 not found" << endl;
     cout << "node0 " << node0->GetName() << endl;
-    cout << "Translation in its mother:" << endl;
-    node0->GetMatrix()->Print();
+    //cout << "Translation in its mother:" << endl;
+    //node0->GetMatrix()->Print();
 
     // Find the PSShield and set it invisible or transparent to see inside
     TGeoVolume* volPSVacuum = node0->GetVolume();
@@ -396,23 +343,91 @@ void track(Int_t mode = 4)
     TEveGeoTopNode* eveTopNode = new TEveGeoTopNode(gGeoManager, topNode); // node0
     gEve->AddGlobalElement(eveTopNode);
   }
+}
 
-   TEveTrackList *list = g_list = new TEveTrackList();
-   TEveTrackPropagator* prop = g_prop = list->GetPropagator();
-   prop->SetFitDaughters(kFALSE);
-   prop->SetMaxR(10000);
-   prop->SetMaxZ(20000);
-   prop->SetMaxOrbs(1.0); // circles
+//==============================================================================
+TEveTrack* make_track(TEveTrackPropagator* prop, Int_t sign)
+{
+  // Make track with given propagator.
+  // Add to math-marks to test fit.
 
-   if (isRungeKutta)
-   {
-      prop->SetStepper(TEveTrackPropagator::kRungeKutta);
-      list->SetName("RK Propagator");
-   }
-   else
-   {
-      list->SetName("Heix Propagator");
-   }
+  TEveRecTrackD *rc = new TEveRecTrackD();
+  //rc->fV.Set(0.028558, -0.000918, 3.691919);
+  //rc->fP.Set(0.767095, -2.400006, -0.313103);
+  rc->fV.Set(0.0, 0.0, 0.0);
+  rc->fP.Set(1, 0, 0.1);
+  rc->fSign = sign;
+
+  TEveTrack* track = new TEveTrack(rc, prop);
+  track->SetName(Form("Charge %d", sign));
+/*  // daughter 0
+  TEvePathMarkD* pm1 = new TEvePathMarkD(TEvePathMarkD::kDaughter);
+  pm1->fV.Set(1.479084, -4.370661, 3.119761);
+  track->AddPathMark(*pm1);
+  // daughter 1
+  TEvePathMarkD* pm2 = new TEvePathMarkD(TEvePathMarkD::kDaughter);
+  pm2->fV.Set(57.72345, -89.77011, -9.783746);
+  track->AddPathMark(*pm2);
+*/
+  return track;
+}
+
+void newTrack(double px=0.0, double py=0.18, double pz=-0.025, int charge=1, int refresh=0)
+{
+  if (refresh) g_list->RemoveElements();
+
+  TEveRecTrackD *rc = new TEveRecTrackD();
+  rc->fV.Set(0, 0, 0);
+  rc->fP.Set(px, py, pz);
+  rc->fSign = -1*charge;
+  TEveTrack *track = new TEveTrack(rc, g_prop);
+
+  track->SetRnrPoints(kTRUE);
+  track->SetMarkerStyle(4);
+
+  if (isRungeKutta)
+     g_list->SetLineColor(kMagenta);
+  else
+     g_list->SetLineColor(kCyan);
+  track->SetLineColor(g_list->GetLineColor());
+
+  g_list->AddElement(track);
+  track->MakeTrack();
+
+  TEveViewer *ev = gEve->GetDefaultViewer();
+  TGLViewer  *gv = ev->GetGLViewer();
+  gv->SetGuideState(TGLUtil::kAxesOrigin, kTRUE, kFALSE, 0);
+
+  gEve->Redraw3D(kTRUE);
+  gSystem->ProcessEvents();
+
+  //gv->CurrentCamera().RotateRad(-0.5, 1.4);
+  gv->RequestDraw();
+}
+
+void track(Int_t mode = 4)
+{
+  gSystem->IgnoreSignal(kSigSegmentationViolation, true);
+  TEveManager::Create();
+  initDet();
+
+  g_list = new TEveTrackList();
+  gEve->AddElement(g_list);
+  TEveTrackPropagator* prop = g_prop = g_list->GetPropagator();
+  prop->SetFitDaughters(kFALSE);
+  prop->SetMaxR(10000);
+  prop->SetMaxZ(20000);
+  prop->SetMaxOrbs(1.0); // circles
+
+  if (isRungeKutta)
+  {
+    prop->SetStepper(TEveTrackPropagator::kRungeKutta);
+    g_list->SetName("RK Propagator");
+  }
+  else
+  {
+    g_list->SetName("Heix Propagator");
+  }
 
    TEveTrack *track = 0;
    switch (mode)
@@ -421,35 +436,31 @@ void track(Int_t mode = 4)
       {
          // B = 0 no difference btween signed and charge particles
          prop->SetMagField(0.);
-         list->SetElementName(Form("%s, zeroB", list->GetElementName()));
+         g_list->SetElementName(Form("%s, zeroB", g_list->GetElementName()));
          track = make_track(prop, 1);
          break;
       }
-
       case 1:
       {
          // constant B field, const angle
          prop->SetMagFieldObj(new TEveMagFieldConst(0., 0., 1.0));
-         list->SetElementName(Form("%s, constB", list->GetElementName()));
+         g_list->SetElementName(Form("%s, constB", g_list->GetElementName()));
          track = make_track(prop, 1);
          break;
       }
-
       case 2:
       {
          // variable B field, sign change at  R = 200 cm
          prop->SetMagFieldObj(new TEveMagFieldDuo(200, -4.4, 2));
-         list->SetElementName(Form("%s, duoB", list->GetElementName()));
+         g_list->SetElementName(Form("%s, duoB", g_list->GetElementName()));
          track = make_track(prop, 1);
          break;
       }
-
       case 3:
       {
          // gapped field
          prop->SetMagFieldObj(new GappedField());
-         list->SetElementName(Form("%s, gappedB", list->GetElementName()));
-
+         g_list->SetElementName(Form("%s, gappedB", g_list->GetElementName()));
 
          TEveRecTrackD *rc = new TEveRecTrackD();
          rc->fV.Set(0.028558, -0.000918, 3.691919);
@@ -465,13 +476,11 @@ void track(Int_t mode = 4)
          gEve->AddElement(marker);
          break;
       }
-
       case 4:
       {
          // Magnetic field of Mu2e.
          Mu2eMagField* mf = new Mu2eMagField;
          mf->setReverseState(false);
-
          mf->readMap();
          //TVector3 pos(2804, -1200, -9891.5);
          //TVector3 pos(3904, 0, -6164.5);
@@ -479,53 +488,18 @@ void track(Int_t mode = 4)
          TVector3 b = mf->getBField( pos );
 
          prop->SetMagFieldObj(mf);
-         prop->SetMaxR(500);
+         prop->SetMaxR(100);
          prop->SetMaxZ(300);
          prop->SetMaxOrbs(20.0); // circles
          prop->SetRnrDaughters(kTRUE);
          prop->SetRnrDecay(kTRUE);
          prop->RefPMAtt().SetMarkerStyle(4);
-         list->SetElementName(Form("%s, Mu2e field", list->GetElementName()));
+         g_list->SetElementName(Form("%s, Mu2e field", g_list->GetElementName()));
 
          break;
       }
    };
 
    newTrack();
-}
-
-void newTrack(double px=-0.17, double py=0.0, double pz=-0.05, int charge=1)
-{
-   TEveRecTrackD *rc = new TEveRecTrackD();
-   rc->fV.Set(0, 0, 30);
-   rc->fP.Set(px, py, pz);
-   rc->fSign = -1*charge;
-   TEveTrack *track = new TEveTrack(rc, g_prop);
-
-   track->SetRnrPoints(kTRUE);
-   track->SetMarkerStyle(4);
-
-   if (isRungeKutta)
-      g_list->SetLineColor(kMagenta);
-   else
-      g_list->SetLineColor(kCyan);
-
-   track->SetLineColor(g_list->GetLineColor());
-
-   gEve->AddElement(g_list);
-   g_list->AddElement(track);
-
-   //prop->PrintMagField(1,1,1);
-   track->MakeTrack();
-
-   TEveViewer *ev = gEve->GetDefaultViewer();
-   TGLViewer  *gv = ev->GetGLViewer();
-   gv->SetGuideState(TGLUtil::kAxesOrigin, kTRUE, kFALSE, 0);
-
-   gEve->Redraw3D(kTRUE);
-   gSystem->ProcessEvents();
-
-   //gv->CurrentCamera().RotateRad(-0.5, 1.4);
-   gv->RequestDraw();
 }
 
